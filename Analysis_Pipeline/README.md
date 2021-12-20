@@ -1,0 +1,3 @@
+Analysis Pipeline Scripts
+
+The main analysis pipeline script is "degradation_experiment_analysis_pipeline.py" and is used for both film and device degradation experiments. Inputs are the raw video and image data (and video metadata), CSVs containing electronic measurements (photoconductivity/transmittance for films; JV measurements for devices) and experiment and sample metadata JSON files. Trial input data for film and device runs are included; due to repository space constraints, only one of each is included. The other Python scripts in this directory (stats.py, utils.py, Ld_analysis_batch.py) are modules containing supporting functions and class definitions that are automatically loaded when the main pipeline script is run.
