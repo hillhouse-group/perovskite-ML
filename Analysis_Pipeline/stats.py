@@ -1,5 +1,5 @@
 import numpy as np
-from hpdb import SQ_calcs
+import SQ_calcs
 import scipy
 
 class Constants(object):

@@ -133,7 +133,7 @@ def VocSQ(Eg, Ta):
     V = k*Ta/q * np.log(JphSQ(Eg, Ta)/JoSQ + 1)    
     return V
     
-def VocMax(Eg, NSuns, Ta):
+def VocMax(Eg, NSuns, Ta=300):
     '''
     This functions Max Voc from S-Q limit, generalized for any Number of Suns
     
@@ -149,7 +149,7 @@ def VocMax(Eg, NSuns, Ta):
     OUTPUTS:
     V = max open-circuit voltage [V]
     '''
-    Ta = 300
+    #Ta = 300
     
     VocSQs300_fn = interp1d(Egs, VocSQs300, kind='cubic')
     Jphs_fn = interp1d(Egs, Jphs, kind='cubic')

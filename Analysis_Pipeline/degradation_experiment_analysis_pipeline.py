@@ -76,9 +76,7 @@ pi = math.pi
 # Provide a list of directories containing the raw experimental data for the degradation
 # experiments you wish to analyze:
     
-directory_list = [
-                                 
-                r'H:\Wiley\210719_High_Eg_Study_DF\PC_PL_Tr_FACs_1sun_25C_lab_air_fan_on_off',
+directory_list = ['Trial_Data/Film_Data/PL_PC_T_DF_1sun_25C_40RH_air_150nm',
                   ]
 
 
@@ -109,6 +107,7 @@ def _calc_binary_mask(primary_vid, mask):
     return binary_img
 
 
+# function for creating secondary videos
 def _animate_vids(vids, cbar_label, vmin=None, vmax=None, text_list=None):
     fig = plt.gcf()
     ax = plt.gca()
@@ -141,7 +140,7 @@ def _animate_vids(vids, cbar_label, vmin=None, vmax=None, text_list=None):
 
     return animation.FuncAnimation(fig, animate, frames=len(vids))
 
-
+# function for calculating temporal coefficient of variation of PLQY
 def _plot_cv(plqy, t=None):
     def _get_slope_(log_x, log_y):
         A = np.vstack([log_x, np.ones_like(log_x)]).T
@@ -222,9 +221,9 @@ def IV_Lambert(V,Rs,Rsh,n_id,temp,Isc,Voc):
 
     return np.real(I) # lambertw() spits out complex values by default
 
-# function to convert Lumencor setting to total beam power based on a polynomial fit of arbitrary degree
+# function to convert Lumencor LED setting to total beam power based on a polynomial fit of arbitrary degree
 def Lumencor_to_watts(setting,coeffs,responsivity=0.3586):
-    # setting: Lumencor setting on 255 scale           
+    # setting: Lumencor LED setting on 255 scale           
     # coeffs: list of coefficients of polynomial fit, in order of descending degree
     # responsivity: convert photodiode readings from A to W (default is 0.3586 A/W at ~550 nm)
     #               if coefficients are already expressed in terms of power, set responsivity = 1
@@ -240,18 +239,18 @@ def main():
     
     # Automatically push raw videos to Drive
 
-    for directory in directory_list:
-        experiment_info = utils.load_sample_metadata(directory, os.path.join('Experiment Info','experiment_info.json'))
-        dest_raw =  os.path.join(
-            #'drive:Machine_Learning/Data/Timeseries/', experiment_info['ClassID'], OLD RYAN METHOD
-            #'gdrive:Machine_Learning/Data/Timeseries/', experiment_info['ClassID'], #Effort_Perovskties_2; this filled up in mid October 2020
-            'gdrive4:Effort_Perovskites_4/Machine_Learning/Data/Timeseries/', #Links to a folder in Tim Siegler's Drive. To reconfigure a new drive, open cmd and run "rclone config" and follow instructios
-            experiment_info['ClassID'],
-            experiment_info['ExperimentID'], 'primary_vids')
-        source_raw = directory
+    #for directory in directory_list:
+    #    experiment_info = utils.load_sample_metadata(directory, os.path.join('Experiment Info','experiment_info.json'))
+    #    dest_raw =  os.path.join(
+    #        #'drive:Machine_Learning/Data/Timeseries/', experiment_info['ClassID'], OLD RYAN METHOD
+    #        #'gdrive:Machine_Learning/Data/Timeseries/', experiment_info['ClassID'], #Effort_Perovskties_2; this filled up in mid October 2020
+    #        'gdrive4:Effort_Perovskites_4/Machine_Learning/Data/Timeseries/', #Links to a folder in Tim Siegler's Drive. To reconfigure a new drive, open cmd and run "rclone config" and follow instructios
+    #        experiment_info['ClassID'],
+    #        experiment_info['ExperimentID'], 'primary_vids')
+    #    source_raw = directory
 
-        command = (['rclone', 'copy', source_raw, dest_raw])
-        subprocess.Popen(command)
+    #    command = (['rclone', 'copy', source_raw, dest_raw])
+    #    subprocess.Popen(command)
 
     
     # Main loop
@@ -385,10 +384,10 @@ def main():
         for grad in range(n_grads):
             for g_loc in range(n_g_locs):
                 if n_g_locs < 2:
-                    WriteDir = os.path.join('../../data/push_to_drive2/analyzed_plva_data/',
+                    WriteDir = os.path.join('Output/',
                                         experiment_info['ClassID'], experiment_info['ExperimentID'])
                 else:
-                    WriteDir = os.path.join('../../data/push_to_drive2/analyzed_plva_data/',
+                    WriteDir = os.path.join('Output/',
                                         experiment_info['ClassID'], experiment_info['ExperimentID'],
                                         'grad' + str(grad), 'loc' + str(g_loc))
                 # WriteDir = os.path.expanduser('~/notebooks/research_notebook/PL_data_analysis/script_fix/temp_dir/')
@@ -678,7 +677,7 @@ def main():
                         plt.savefig(os.path.join(fft_dir, '%03i.png' % vid_idx), dpi=300, bbox_inches='tight')
                         plt.close()
 
-                #TODO (in progress): if specified, extract dark field features:
+                # if specified, extract dark field features:
                 if dark_field:
                     # first identify the image files
                     if sample_type == 'film':
@@ -778,7 +777,7 @@ def main():
                             Rdiff_skews[jj] = skew(Rdiff_Array[DF_ROI_x[0]:DF_ROI_x[1],DF_ROI_y[0]:DF_ROI_y[1]],axis=None)
                             Rdiff_kurts[jj] = kurtosis(Rdiff_Array[DF_ROI_x[0]:DF_ROI_x[1],DF_ROI_y[0]:DF_ROI_y[1]],axis=None)
                         
-                #TODO (in progress): if specified, extract bright field features:                        
+                # if specified, extract bright field features:                        
                 if bright_field:
                     # first identify the image files
                     BF_names = natsorted([name for name in os.listdir(directory) 
@@ -1073,26 +1072,26 @@ def main():
                 ani = _animate_vids(ims_std, '$t-std_{norm}$', .01, .1, text_list=text_list)
 
                 writer = FFMpegWriter(fps=15, metadata=dict(artist='Me'), bitrate=1800)
-                ani.save(os.path.join(WriteDir, 't1_movie.mp4'), writer=writer)
+                #ani.save(os.path.join(WriteDir, 't1_movie.mp4'), writer=writer)
                 plt.close()
 
                 fig2 = plt.figure()
                 ax2 = fig2.add_subplot(111)
                 ani2 = _animate_vids(ims_mean, '$\Delta E_F\ [eV]$', text_list=text_list)
-                ani2.save(os.path.join(WriteDir, 't0_qfls_movie.mp4'), writer=writer)
+                #ani2.save(os.path.join(WriteDir, 't0_qfls_movie.mp4'), writer=writer)
                 plt.close()
 
                 fig3 = plt.figure()
                 ax3 = fig3.add_subplot(111)
                 ani3 = _animate_vids(ims_chi, '$\chi$', chi_min, chi_max, text_list=text_list)
-                ani3.save(os.path.join(WriteDir, 't0_chi_movie.mp4'), writer=writer)
+                #ani3.save(os.path.join(WriteDir, 't0_chi_movie.mp4'), writer=writer)
                 plt.close()
 
                 fig4 = plt.figure()
                 ax4 = fig4.add_subplot(111)
                 ani4 = _animate_vids(betas, '$\\beta$', text_list=text_list)
 
-                ani4.save(os.path.join(WriteDir, 'beta_movie.mp4'), writer=writer)
+                #ani4.save(os.path.join(WriteDir, 'beta_movie.mp4'), writer=writer)
                 plt.close()
 
 
@@ -1103,7 +1102,7 @@ def main():
                     '$\\langle \\mathrm{QLFS}\\rangle_{T_S} / \\mathrm{std}(\\mathrm{QLFS})_{T_S}$',
                     text_list=text_list)
 
-                ani5.save(os.path.join(WriteDir, 't0_qlfs_div_std.mp4'), writer=writer)
+                #ani5.save(os.path.join(WriteDir, 't0_qlfs_div_std.mp4'), writer=writer)
                 plt.close()
                 
                 # make dark field video (with ROI superimposed) 
@@ -1115,7 +1114,7 @@ def main():
                     ax6.plot(DF_x,DF_y,'r--',linewidth=2)
                     ani6 = _animate_vids(DF_ims,
                         'Dark Field Intensity')
-                    ani6.save(os.path.join(WriteDir, 'DarkField.mp4'), writer=writer)
+                    #ani6.save(os.path.join(WriteDir, 'DarkField.mp4'), writer=writer)
                     plt.close()
                     if DF_cal_exists:
                         fig6a = plt.figure()
@@ -1140,7 +1139,7 @@ def main():
                     ani7 = _animate_vids(BF_ims,
                         'Bright Field Intensity',
                         text_list=text_list)
-                    ani7.save(os.path.join(WriteDir, 'BrightField.mp4'), writer=writer)
+                    #ani7.save(os.path.join(WriteDir, 'BrightField.mp4'), writer=writer)
                     plt.close()
                     if BF_cal_exists:
                         fig7a = plt.figure()
@@ -1244,7 +1243,7 @@ def main():
         
                         ani8 = animation.FuncAnimation(fig8, animate_JV_PL, frames=num_valid_files)
                         writer = FFMpegWriter(fps=15, metadata=dict(artist='Me'), bitrate=1800)
-                        ani8.save(os.path.join(WriteDir, 'JV_PL_movie_rev_sweep.mp4'), writer=writer)
+                        #ani8.save(os.path.join(WriteDir, 'JV_PL_movie_rev_sweep.mp4'), writer=writer)
 
                 # Time stopping t(PLQY-75)
                 thres = PLQY_xy0t0[0, 0] * 0.75
@@ -1492,12 +1491,12 @@ def main():
                     json.dump(sample_info, outfile)
 
                 # Authomatically push results to Drive
-                source = 'C:/Users/hughadm/Documents/Users/Ryan/hpdb/data/push_to_drive2/analyzed_plva_data/'
+                #source = 'C:/Users/hughadm/Documents/Users/Ryan/hpdb/data/push_to_drive2/analyzed_plva_data/'
                 #dest =  'drive:Machine_Learning/Data/Timeseries' OLD RYAN NAME
                 #dest =  'gdrive:Machine_Learning/Data/Timeseries' # Effort_Perovskties_2; filled mid-October 2020
-                dest = 'gdrive4:Effort_Perovskites_4/Machine_Learning/Data/Timeseries/' #Links to a folder in Tim Siegler's Drive. To reconfigure a new drive, open cmd and run "rclone config" and follow instructios
-                command = (['rclone', 'copy', source, dest])
-                subprocess.Popen(command)
+                #dest = 'gdrive4:Effort_Perovskites_4/Machine_Learning/Data/Timeseries/' #Links to a folder in Tim Siegler's Drive. To reconfigure a new drive, open cmd and run "rclone config" and follow instructios
+                #command = (['rclone', 'copy', source, dest])
+                #subprocess.Popen(command)
 
 
 if __name__ == '__main__':

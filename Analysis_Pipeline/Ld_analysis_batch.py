@@ -16,8 +16,8 @@ import os
 sys.path.append('../')
 
 
-import hpdb.SQ_calcs as SQ_calcs
-from hpdb.plva.stats import Constants
+import SQ_calcs
+from stats import Constants
 
 
 #change default plot settings
