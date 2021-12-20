@@ -1,0 +1,23 @@
+{
+    "SampleID": "WDS99-7",
+    "Fabrication Date": "06/02/2021",
+    "Starting Composition A-site": "MA 1.0",
+    "Starting Composition B-site": "Pb 1.0",
+    "Starting Composition X-site": "I 1.0",
+    "Ending Composition A-site": null,
+    "Ending Composition B-site": null,
+    "Ending Composition X-site": null,
+    "Fab Method": "Spin Coating",
+    "Fab Details": "4000 rpm for 45 s + DEE dip for 60 s",
+    "Ink Solvent": "1:1 DMF:NMP",
+    "Film Thickness, nm": 148,
+    "Fabrication Environment": "Spin coater GB",
+    "Ink Concentraion, M": "0.7 M",
+    "Anneal Temp, C": "100",
+    "Anneal time, min": "10",
+    "Fab O2 ppm": "XX",
+    "Fab H20 ppm": "XX",
+    "Storage Comments": "Spin Coater GB",
+    "User": "Andrew",
+    "Other Fabrication Comments": ""
+}
