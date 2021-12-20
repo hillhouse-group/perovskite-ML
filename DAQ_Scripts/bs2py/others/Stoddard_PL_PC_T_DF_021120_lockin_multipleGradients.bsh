@@ -1,0 +1,368 @@
+/*
+ * Script to collect short videos over long time at different locations along a gradient substrate
+ * 
+ * Recently edited to allow collection across multiple gradients under simultaneous stressing
+ *
+ * More recently edited (11 Feb 2020, by W.A.D.-S.) to incorporate dark field measurements
+ */
+
+// Note: need to use MicroManager configuration file that has stage loaded (eg. Stoddard_conf1)
+
+ 
+// Imports
+import ij.ImagePlus;
+import ij.process.ImageStatistics;
+import ij.measure.Measurements;
+import ij.process.ImageProcessor;
+import ij.process.ShortProcessor;
+import java.lang.Math;
+import javax.swing.JOptionPane;
+import ij.io.FileSaver;
+
+// file locations
+mmc.sleep(1000);
+
+// Elapsed time: 1 sec plus change
+
+classID = "200302_PLVA_Perovskite_Degradation_Study";
+material_str = "FACsPb(I,Br)3";
+expt_str = "1Sun_85C_60RH_BoxAir_50X_DarkSoak_aft2hrs";
+
+rootDirName = "C:/Users/Administrator/Documents/Users/Wiley/PLVA Measurements/00323_Reproducibility_Study/FACsPbIBr3/8Sun_45C_60RH_air/"; //directory to save data
+baseName = "8Sun_45C_60RH_air"; // name prefix for data
+
+// Number of timepoints
+vidTimeMs = 5000; //Length of each short video (in ms)
+
+ld_time = 60000; // wait time for ld/other electronic measurements (in ms)
+// set this to 50000 for single point measurements
+// set this to 60000 for single gradient measurements
+// set this to 20000 for quick method development 
+t_motor_move = 5*1000; // time required for filter cube motor to do its thang
+t_DF_acq = 15*1000; // time allocated for dark field image acquisition/autofocus
+
+nrFrames = 50; // How many frames per short video
+nrChannels = nrSlices = nrPositions = 1;
+
+maxExpTimeMs = vidTimeMs/nrFrames;
+minExpTimeMs = 1; //Limit of camera
+
+//exposureMs = mmc.getExposure(); // Gets exposure time from Camera settings box
+exposureMs = 5; // starting exposure time, doesn't really matter
+exposureMsDF = 50; // starting exposure time for dark field
+targetMeanCts = 10000; // target counts to set exposure time to get
+mmc.setExposure(exposureMs);
+
+burstTimeMs = exposureMs * nrFrames;
+nRepeats = 400; //number of times to repeat video acquisition
+vidTimeIntervalMs = 300000; //time between start of videos (in ms) - i.e., frame period in secondary video
+
+//define n compositions, and start and end coordinates for each grad
+nCompPerGrad = 1; // # of measurements to take along 1 substrate -- ONLY ODD NUMBERS PLEASE
+
+nGrads = 1; // # of substrates in the measurement (up to 4)
+
+// Set begining and ending coordinates for each grad
+// (use Stoddard_getStagePos.bsh file)
+
+// Declare and allocate memory for starting and ending coordinate variables
+float[] xPosStart = new float[nGrads];
+float[] yPosStart = new float[nGrads];
+float[] zPosStart = new float[nGrads];
+
+float[] xPosEnd = new float[nGrads];
+float[] yPosEnd = new float[nGrads];
+float[] zPosEnd = new float[nGrads];
+
+// Set begining and ending coordinates for each grad
+// (use Stoddard_getStagePos.bsh file)
+// Input the values
+xPosStart[0] = 0;
+yPosStart[0] = -280;
+zPosStart[0] = 82482;
+
+xPosEnd[0] = 0;
+yPosEnd[0] = 0;
+zPosEnd[0] = 3;
+
+// Set the starting value for dark field image acquisition
+zPosDF = 82503;
+
+// If used, set the coordinates for the midpoint of the gradient
+float[] xPosMiddle = new float[nGrads];
+float[] yPosMiddle = new float[nGrads];
+float[] zPosMiddle = new float[nGrads];
+
+xPosMiddle[0] = 7958;
+yPosMiddle[0] = 19;
+zPosMiddle[0] = 4;
+
+// INPUT SECTION OF CODE ENDS HERE; DONT CHANGE BELOW
+
+// declare and allocate memory for the X,Y,Z profiles of the gradient
+float[] xProfile = new float[nCompPerGrad];
+float[] yProfile = new float[nCompPerGrad];
+float[] zProfile = new float[nCompPerGrad];
+
+// index representing midpoint of gradient
+halfway = (nCompPerGrad-1)/2;
+
+// assign starting values to the x, y, and z profiles
+// if single point, profiles are a single point (this avoids divide by zero errors in block of code below)
+if (nCompPerGrad == 1) {
+	xProfile[0] = Math.round(xPosStart[0]);
+	yProfile[0] = Math.round(yPosStart[0]);
+	zProfile[0] = Math.round(zPosStart[0]);
+}
+// if gradient, interpolate between starting, middle, and end points
+else {  
+	for (i=0; i<nCompPerGrad; i++){
+		//xProfile[i] = Math.round(((xPosEnd[0] - xPosStart[0]) / (nCompPerGrad - 1)) * i + xPosStart[0]);
+		//yProfile[i] = Math.round(((yPosEnd[0] - yPosStart[0]) / (nCompPerGrad - 1)) * i + yPosStart[0]);
+		
+		// interpolate z profile using slopes before and after the midpoint		
+		if (i < halfway) {
+			xProfile[i] = Math.round(((xPosMiddle[0] - xPosStart[0]) / halfway) * i + xPosStart[0]);
+			yProfile[i] = Math.round(((yPosMiddle[0] - yPosStart[0]) / halfway) * i + yPosStart[0]);
+			zProfile[i] = Math.round(((zPosMiddle[0] - zPosStart[0]) / halfway) * i + zPosStart[0]);
+		}
+		else {
+			xProfile[i] = Math.round(((xPosEnd[0] - xPosMiddle[0]) / halfway) * (i-halfway) + xPosMiddle[0]);
+			yProfile[i] = Math.round(((yPosEnd[0] - yPosMiddle[0]) / halfway) * (i-halfway) + yPosMiddle[0]);
+			zProfile[i] = Math.round(((zPosEnd[0] - zPosMiddle[0]) / halfway) * (i-halfway) + zPosMiddle[0]);
+		}
+	}
+}
+
+// get Stage Devices
+xyStage = mmc.getXYStageDevice(); 
+zStage = mmc.getFocusDevice();
+
+//Loop over gradient positions
+vidNum = 1;
+while (vidNum <= nRepeats) {
+	
+	// record time at start of gradient sweep
+	now = System.currentTimeMillis();
+	
+	//for (j=0; j<nGrads; j++){
+		
+		for (i=0; i<nCompPerGrad; i++) {
+			
+			
+			// Move to new position, wait for device to move
+			now3 = System.currentTimeMillis();
+			/*
+			// If using in single point mode, just use single set of (x,y,z) coordinates
+			// Otherwise, interpolate between start and end points in the gradient
+			if (nCompPerGrad == 1) {
+				newX = xPosStart[0];
+				newY = yPosStart[0];
+			}
+			else {
+				newX = ((xPosEnd[0] - xPosStart[0]) / (nCompPerGrad - 1)) * i + xPosStart[0];
+				newY = ((yPosEnd[0] - yPosStart[0]) / (nCompPerGrad - 1)) * i + yPosStart[0];
+			}
+			//Use this to set Z to the same position every DAQ cycle:
+			//newZ = ((zPosEnd[0] - zPosStart[0]) / (nCompPerGrad - 1)) * i + zPosStart[0];
+			*/
+			/*
+			//Use this to correct the focus for Z drift:
+			if (vidNum == 1) {
+				if (nCompPerGrad == 1) {
+					newZ =  zPosStart[0];
+				//	newZStart = newZ;
+				}
+				else {
+					newZ = ((zPosEnd[0] - zPosStart[0]) / (nCompPerGrad - 1)) * i + zPosStart[0];
+				//	newZStart = newZ;
+				}
+			}
+			else {
+				newZ = zPosPostFocus;
+			}
+			*/
+			
+			// use this algorithm if using the midpoint method for focusing along the gradient:
+			
+
+			// move the stage
+			mmc.setXYPosition(xyStage, xProfile[i], yProfile[i]);
+			mmc.setPosition(zStage, zProfile[i]);
+			/*
+			// if at the starting position of the gradient, remember the original (autofocused) starting point
+			
+			if (i == 0) {
+				mmc.setPosition(zStage, zProfile[i]);
+			}
+			// otherwise, use the autofocused position from the previous point
+			else {
+				mmc.setPosition(zStage, newZ);
+			}
+			*/
+			mmc.waitForDevice(xyStage);
+			mmc.waitForDevice(zStage);
+
+			// First set camera exposure time
+			ImageProcessor ip;
+			mmc.snapImage();
+			img = mmc.getImage();
+			int width = mmc.getImageWidth();
+			int height = mmc.getImageHeight();
+			ip = new ShortProcessor(width, height);
+			ip.setPixels((short[])img);	   
+			ImagePlus imp = new ImagePlus("tmp", ip);
+			ImageStatistics stats = imp.getStatistics(ij.measure.Measurements.MEAN);	
+			curMeanCts = stats.mean;
+			oldExpTime = exposureMs;
+			exposureMs = Math.max(Math.min(oldExpTime * targetMeanCts / curMeanCts, maxExpTimeMs), minExpTimeMs);
+			mmc.setExposure(exposureMs);
+			print("Exposure Time (ms):");
+			print(exposureMs); //printing exposure time for reference; can comment this out
+			
+			// auto-focus the image using the "Oughtafocus" algorithm - make sure to set this up in the GUI beforehand or the code may not work
+			/* Best settings so far as of 10 Oct 2019: 
+			   100 um search range
+			   0.5 um tolerance
+			   0.8 crop factor
+			   exposure time is whatever the previous algorithm thinks it should be
+			   don't show images (this is likely to really slow things down)
+			   maximize EDGES - simple metrics like mean, std dev or normalized variance don't do a great job */
+			
+			af = gui.getAutofocus();
+			af.fullFocus();
+			af.setPropertyValue("SearchRange_um",String.valueOf(100));
+			af.setPropertyValue("Tolerance_um",String.valueOf(0.5));
+			af.setPropertyValue("CropFactor",String.valueOf(0.8));
+			af.setPropertyValue("Exposure",String.valueOf(exposureMs));
+			af.setPropertyValue("ShowImages","No");
+			af.setPropertyValue("Maximize","Edges");
+			
+			// print the new z position after autofocusing, if desired 
+			zPosPostFocus = mmc.getPosition(zStage);
+			print("After Focusing, zPos =");
+			print(zPosPostFocus);
+			
+			// update z profile based on autofocus
+			zProfile[i] = Math.round(zPosPostFocus);
+			
+			// if at the starting point of the gradient, remember the focused position for the starting point
+			//if (i == 0) {
+			//	newZStart = zPosPostFocus;
+			//}
+			
+			// now do acquisition: define unique video name with a) gradient number, b) position on that gradient, and c) the primary video index
+			j=0;
+			vidName = baseName + "_grad" + j.toString() + "_loc" + i.toString() + "_time" + (vidNum-1).toString();
+			acqName = gui.getUniqueAcquisitionName(vidName);
+			
+			// begin the acquisition
+			gui.openAcquisition(acqName, rootDirName, nrFrames, nrChannels, nrSlices, nrPositions,/* show */ true,/* save */ true);
+			// get image parameters
+			width = (int) mmc.getImageWidth();
+			height = (int) mmc.getImageHeight();
+			bytesPerPixel = (int) mmc.getBytesPerPixel();
+			bitDepth = (int) mmc.getImageBitDepth();
+			
+			gui.initializeAcquisition(acqName, width, height, bytesPerPixel, bitDepth);
+			
+			mmc.startSequenceAcquisition(nrFrames, 0, true);
+			frame = 0;
+			while (mmc.getRemainingImageCount() > 0 || mmc.isSequenceRunning(mmc.getCameraDevice())) {
+			    if (mmc.getRemainingImageCount() > 0) {
+				    now2 = System.currentTimeMillis();
+				    img = mmc.popNextTaggedImage();
+				    gui.addImageToAcquisition(acqName, frame, 0, 0, 0, img);
+				    frame++;
+				    itTook2 = System.currentTimeMillis() - now2;
+		  
+				    mmc.sleep(Math.max(maxExpTimeMs - itTook2, 0));
+			    }
+			    else {
+				    mmc.sleep(Math.min(0.5 * exposureMs, 20));
+			    }
+			
+			}
+			
+			mmc.stopSequenceAcquisition(); // Finish collecting video	
+			gui.closeAcquisitionWindow(acqName); // Close the acquisition window and save the data
+
+			itTook3 = System.currentTimeMillis() - now3;
+			
+			mmc.sleep(ld_time - itTook3); // Wait for diffusion length measurement to finish
+			                                             
+			// move Z-stage into position for dark field 
+			mmc.setPosition(zStage, zPosDF);
+			mmc.waitForDevice(zStage);
+			// wait for filter cube to move into position for dark field imaging
+			mmc.sleep(t_motor_move);
+			
+			// Autoset exposure time
+			ImageProcessor ip;
+			mmc.snapImage();
+			img = mmc.getImage();
+			int width = mmc.getImageWidth();
+			int height = mmc.getImageHeight();
+			ip = new ShortProcessor(width, height);
+			ip.setPixels((short[])img);	   
+			ImagePlus imp = new ImagePlus("tmp", ip);
+			ImageStatistics stats = imp.getStatistics(ij.measure.Measurements.MEAN);	
+			curMeanCts = stats.mean;
+			oldExpTime = exposureMsDF;
+			exposureMsDF = Math.max(Math.min(oldExpTime * targetMeanCts / curMeanCts, maxExpTimeMs), minExpTimeMs);
+			exposureMsDF=100;
+			mmc.setExposure(exposureMsDF);
+			print("Dark Field Exposure Time (ms):");
+			print(exposureMsDF); //printing exposure time for reference; can comment this out
+			
+			// Fine focus Z height for dark field:
+			
+			 //Strategy 1. (Quick, maybe not robust) Assume consistent difference in focal lengths between PL and DF modes
+			 PL_DF_difference = 21; // Arbitrary right now
+			 zPosDF = zPosPostFocus + PL_DF_difference;
+			 mmc.setPosition(zStage, zPosDF);
+			 mmc.waitForDevice(zStage);			
+			
+			// Strategy 2. (Failsafe but slow) Use autofocus algorithm to optimize Z
+			//af = gui.getAutofocus();
+			//af.fullFocus();
+			//af.setPropertyValue("SearchRange_um",String.valueOf(100));
+			//af.setPropertyValue("Tolerance_um",String.valueOf(0.5));
+			//af.setPropertyValue("CropFactor",String.valueOf(0.8));
+			//af.setPropertyValue("Exposure",String.valueOf(exposureMsDF));
+			//af.setPropertyValue("ShowImages","No");
+			//af.setPropertyValue("Maximize","Edges");
+
+			// print the new z position after autofocusing, if desired 
+			zPosDF = mmc.getPosition(zStage);
+			print("After Focusing, zPosDF =");
+			print(zPosDF);
+			
+			// Snap image
+			mmc.setExposure(exposureMsDF);
+			mmc.snapImage();
+			img = mmc.getImage();
+			// save pre-frame to TIF
+			prePath = rootDirName + acqName + "_DF.tif";
+			int width = mmc.getImageWidth();
+			int height = mmc.getImageHeight();
+			ip = new ShortProcessor(width, height);
+			ip.setPixels((short[])img);
+			ImagePlus imp = new ImagePlus(prePath, ip);
+			FileSaver fs = new FileSaver(imp);
+			fs.saveAsTiff(prePath);
+			
+			// No sleep statement currently necessary while motor moves the filter cube back
+			// (Should kick to outer loop, which will sleep the remainder of the allocated DAQ cycle time)
+			
+		} // end inner loop (over positions on the gradient)
+	
+	//} // end middle loop (over gradients)
+	
+	itTook = System.currentTimeMillis() - now; // comment out this line when running single gradient
+	mmc.sleep(vidTimeIntervalMs - itTook); // comment out this line when running single gradient
+	vidNum++;	
+} // end the outer loop (index: primary video)
+
+
+	

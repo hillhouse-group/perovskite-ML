@@ -1,0 +1,17 @@
+xy = mmc.getXYStageDevice(); 
+zStage = mmc.getFocusDevice();
+
+
+xPos = mmc.getXPosition(xy); 
+yPos = mmc.getYPosition(xy); 
+zPos = mmc.getPosition(zStage);
+
+
+print("xPos =");
+print(xPos);
+print("yPos =");
+print(yPos);
+print("zPos =");
+print(zPos);
+
+
