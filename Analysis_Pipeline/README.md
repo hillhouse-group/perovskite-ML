@@ -1,3 +1,5 @@
-Analysis Pipeline Scripts
+# Analysis Pipeline Scripts
 
 The main analysis pipeline script is "degradation_experiment_analysis_pipeline.py" and is used for both film and device degradation experiments. Inputs are the raw video and image data (and video metadata), CSVs containing electronic measurements (photoconductivity/transmittance for films; JV measurements for devices) and experiment and sample metadata JSON files. Trial input data for film and device runs are included; due to repository space constraints, only one of each is included. The other Python scripts in this directory (stats.py, utils.py, Ld_analysis_batch.py) are modules containing supporting functions and class definitions that are automatically loaded when the main pipeline script is run.
+
+The analysis pipeline also requires an optics configuration file that specifies a) how to convert the power setting for the LED illumination source into an equivalent beam power or photon flux over the camera field of view and b) how to convert detected counts in PL images to a detected photon flux. These files are stored in the "Beam Intensity Calibration" directory and are specific to the combination of microscope frame, objective lens, and sample band gap (in order to convert photon flux to equivalent number of suns) used for each experiment. 
